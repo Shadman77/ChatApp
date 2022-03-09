@@ -3,6 +3,8 @@ const socketio = require("socket.io");
 const http = require("http");
 // var cors = require("cors");
 
+const { addUser, getUser, remoteUser, getUsersInRoom } = require("./users");
+
 const app = express();
 const server = http.createServer(app);
 
@@ -27,11 +29,34 @@ io.on("connection", (socket) => {
   socket.on("join", ({ name, room }, callback) => {
     console.log(name, room);
 
-    const error = true;
+    // socket.id is the individual client socket's id
+    const { error, user } = addUser({ id: socket.id, name, room });
 
-    // if (error) {
-    //   callback({ error: "error" });
-    // }
+    if (error) callback({ error });
+
+    // Send to the specific user
+    socket.emit("message", {
+      user: "admin",
+      text: `${user.name}, welcome to the room ${user.room}`,
+    });
+
+    // Send to everybody in a specific room
+    socket.broadcast
+      .to(user.room)
+      .emit("message", { user: "admin", text: `User ${user.name} has joined` });
+
+    socket.join(user.room);
+
+    callback();
+  });
+
+  // handle user messages
+  socket.on("sendMessage", (message, callback) => {
+    const user = getUser(socket.id);
+
+    io.to(user.room).emit("message", { user: user.name, text: message });
+
+    callback();
   });
 
   socket.on("disconnect", () => {
