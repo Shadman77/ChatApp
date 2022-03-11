@@ -60,7 +60,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("User had left");
+    const user = remoteUser(socket.id)
+
+    io.to(user.room).emit("message", { user: "admin", text: `User ${user.name} has left` });
   });
 });
 
